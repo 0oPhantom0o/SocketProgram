@@ -1,0 +1,116 @@
+
+// const NetWorkIp = "0.0.0.0:8181"
+// const Protocol = "tcp"
+//
+//	func main() {
+//		listener, err := net.Listen(Protocol, NetWorkIp)
+//		if err != nil {
+//			fmt.Println("Error starting server:", err)
+//			return
+//		}
+//		defer listener.Close()
+//
+//		fmt.Println("Server is listening on port 8181...")
+//		var clients []net.Conn
+//		var mu sync.Mutex
+//
+//		for {
+//			conn, err := listener.Accept()
+//			if err != nil {
+//				fmt.Println("Error accepting connection:", err)
+//				continue
+//			}
+//
+//			mu.Lock()
+//			if len(clients) < 2 {
+//				clients = append(clients, conn)
+//				fmt.Printf("Client %d connected: %s\n", len(clients), conn.RemoteAddr())
+//				go handleClient(conn, &clients, &mu)
+//			} else {
+//				fmt.Println("Server already has two clients connected. Rejecting additional connections.")
+//				conn.Close()
+//			}
+//			mu.Unlock()
+//
+//			if len(clients) == 2 {
+//				fmt.Println("Two clients connected. You can now start chatting!")
+//			}
+//		}
+//	}
+//
+//	func handleClient(conn net.Conn, clients *[]net.Conn, mu *sync.Mutex) {
+//		defer conn.Close()
+//
+//		for {
+//			message, err := convertOutput(conn)
+//			if err != nil {
+//				fmt.Println("Error reading from client:", conn.RemoteAddr(), err)
+//				removeClient(conn, clients, mu)
+//				return
+//			}
+//
+//			mu.Lock()
+//			for _, client := range *clients {
+//				if client != conn {
+//					clientID := client.RemoteAddr().String()
+//					messageWithID := fmt.Sprintf("Client %s says: %s", clientID, message)
+//					_, writeErr := client.Write([]byte("Message from : " + messageWithID))
+//					if writeErr != nil {
+//						fmt.Println("Error writing to client:", client.RemoteAddr(), writeErr)
+//					}
+//				}
+//			}
+//			mu.Unlock()
+//		}
+//	}
+//
+//	func removeClient(conn net.Conn, clients *[]net.Conn, mu *sync.Mutex) {
+//		mu.Lock()
+//		defer mu.Unlock()
+//		var updatedClients []net.Conn
+//		for _, client := range *clients {
+//			if client != conn {
+//				updatedClients = append(updatedClients, client)
+//			}
+//		}
+//		*clients = updatedClients
+//	}
+//
+//	func convertOutput(conn net.Conn) (string, error) {
+//		reader := bufio.NewReader(conn)
+//		data, err := readBytesExample(reader)
+//		return data, err
+//	}
+//
+//	func readBytesExample(reader *bufio.Reader) (string, error) {
+//		var buffer bytes.Buffer
+//		delimiter := byte(' ')
+//		var err error
+//		var chunk []byte
+//		for {
+//			chunk, err = reader.ReadBytes(delimiter)
+//			if err != nil {
+//				buffer.Write(chunk)
+//				break
+//			}
+//			buffer.Write(chunk)
+//			buffer.WriteString("\n")
+//		}
+//		return buffer.String(), nil
+//	}
+
+
+	// Reading messages from server in a goroutine
+	//go func() {
+	//	defer wg.Done()
+	//	buf := make([]byte, 1024)
+	//	reader := bufio.NewReader(conn)
+	//	for {
+	//		message, err := reader.Read(buf)
+	//		if err != nil {
+	//			fmt.Println("Connection closed by server.")
+	//			return
+	//		}
+	//		fmt.Print("message received ! " + string(buf[:message]))
+	//	}
+	//}()
