@@ -114,3 +114,45 @@
 	//		fmt.Print("message received ! " + string(buf[:message]))
 	//	}
 	//}()
+
+
+Run and Count algorithm
+
+func checkType(data string) error {
+
+	for _, char := range data {
+		if unicode.IsLetter(char) {
+			return fmt.Errorf("data is only string")
+		}
+
+		// If both a letter and digit are found, it's mixed
+
+	}
+	return nil
+}
+func algorithm(data string) (string, error) {
+	//slicedData := strings.Split(data, "")
+	err := checkType(data)
+	if err != nil {
+		return "data has string ", fmt.Errorf("its not algorithm")
+	}
+	slicedData := strings.Split(data, "")
+	var count = 1
+	var newList []string
+	for i := 0; i < len(slicedData); i++ {
+
+		if i < len(slicedData)-1 && slicedData[i] == slicedData[i+1] {
+			count++
+			fmt.Println(count)
+		} else {
+			newList = append(newList, slicedData[i], strconv.Itoa(count))
+			fmt.Println(newList)
+			count = 1
+
+		}
+	}
+	fmt.Println(newList)
+	fmt.Println(slicedData)
+	return strings.Join(newList, ""), nil
+
+}

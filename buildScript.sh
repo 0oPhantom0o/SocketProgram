@@ -1,13 +1,10 @@
-
-
-
 #!/bin/bash
 
 FOLDER1=/home/mahdi/Desktop/go/socketProgram/ServerSocket
 FOLDER2=/home/mahdi/Desktop/go/socketProgram/ClientSocket
 
 
- 
+
 # Function to build Go files with specific naming
 build_executables() {
     local folder=$1
@@ -38,8 +35,24 @@ build_executables() {
     fi
 }
 
-# Build executables in Folder 1 with 'server' prefix
 build_executables "$FOLDER1" "server"
-
-# Build executables in Folder 2 with 'client' prefix
+#
 build_executables "$FOLDER2" "client"
+
+move_executable(){
+  local file_path="/home/mahdi/Desktop/go/socketProgram/build/linux"
+  username=noori
+  server_ip=192.168.100.97
+  server_path=/home/noori
+  password=noori@1
+  echo "Moving executable files in $folder ...."
+
+  sshpass -p "$password" scp -r "$file_path" "$username@$server_ip:$server_path"
+
+  if [ $? -eq 0 ]; then
+      echo "Folder uploaded successfully to $username@$server_ip:$server_path"
+  else
+      echo "Folder upload failed."
+  fi
+  }
+#move_executable
