@@ -1,7 +1,7 @@
 #!/bin/bash
 
-FOLDER1=/home/mahdi/Desktop/go/socketProgram/ServerSocket
-FOLDER2=/home/mahdi/Desktop/go/socketProgram/ClientSocket
+FOLDER1=/home/mahdi/Desktop/go/socketProgram/server
+FOLDER2=/home/mahdi/Desktop/go/socketProgram/client
 
 
 
@@ -55,4 +55,4 @@ move_executable(){
       echo "Folder upload failed."
   fi
   }
-#move_executable
+move_executable
