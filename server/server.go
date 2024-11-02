@@ -24,6 +24,8 @@ type SmS struct {
 	OperationTime time.Time
 }
 
+var mu sync.Mutex
+
 func main() {
 
 	fmt.Printf("Server is listening on port %s...\n", port)
@@ -44,7 +46,6 @@ func listen() {
 	defer listener.Close()
 
 	var clients []net.Conn
-	var mu sync.Mutex
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -56,7 +57,7 @@ func listen() {
 		if len(clients) < 2 {
 			clients = append(clients, conn)
 			fmt.Printf("Client %d connected: %s\n", len(clients), conn.RemoteAddr())
-			go handleClient(conn, &clients, &mu)
+			go handleClient(conn, &clients)
 		} else {
 			fmt.Println("Server already has two clients connected. Rejecting additional connections.")
 			conn.Close()
@@ -69,7 +70,7 @@ func listen() {
 	}
 }
 
-func handleClient(conn net.Conn, clients *[]net.Conn, mu *sync.Mutex) {
+func handleClient(conn net.Conn, clients *[]net.Conn) {
 	for {
 		fmt.Fprintf(conn, "how many cards you want to send? ")
 		scanner := bufio.NewScanner(conn)
@@ -135,7 +136,7 @@ func handleClient(conn net.Conn, clients *[]net.Conn, mu *sync.Mutex) {
 		}
 	}
 }
-func removeClient(conn net.Conn, clients *[]net.Conn, mu *sync.Mutex) {
+func removeClient(conn net.Conn, clients *[]net.Conn) {
 	mu.Lock()
 	defer mu.Unlock()
 	var updatedClients []net.Conn
