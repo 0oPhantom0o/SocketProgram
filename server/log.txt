@@ -1,0 +1,3 @@
+Info 2024-11-05T15:12:58.327613952+03:30
+2024/11/05 15:41:02 server.go:70: packet:1 {From: To: Amount: Bank: Time:2024 Time:11 Time:05T15:41:01.884293656+03:30} packet:2 {From: To: Amount: Bank: Time:2024 Time:11 Time:05T15:41:02.005169367+03:30}
+

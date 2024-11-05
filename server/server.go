@@ -2,71 +2,112 @@ package main
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
-const (
-	NetWorkIp = "0.0.0.0"
-	port      = ":9009"
-	Protocol  = "tcp"
-)
-
-type SmS struct {
-	From          string
-	To            string
-	Amount        int
-	Bank          string
-	OperationTime time.Time
+type Configs struct {
+	Port     string `yaml:"port"`
+	Host     string `yaml:"host"`
+	Protocol string `yaml:"protocol"`
 }
 
+var conf = Configs{}
 var mu sync.Mutex
+var clientID string
+var InfoLog *log.Logger
 
+func init() {
+	config()
+	logData()
+}
 func main() {
 
-	fmt.Printf("Server is listening on port %s...\n", port)
+	fmt.Printf("Server is listening on port %s...\n", conf.Port)
 
-	// count client and decline new user if we had 2 user
 	listen()
-
-	// Start client connection
 
 }
 
 func listen() {
-	listener, err := net.Listen(Protocol, NetWorkIp+port)
+	listener, err := net.Listen(conf.Protocol, conf.Host+conf.Port)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
 		return
 	}
 	defer listener.Close()
 
-	var clients []net.Conn
 	for {
 		conn, err := listener.Accept()
+		fmt.Println(conn.RemoteAddr())
 		if err != nil {
 			fmt.Println("Error accepting connection:", err)
 			continue
 		}
-		go handleClient(conn, &clients)
-		//mu.Lock()
-		//if len(clients) < 2 {
-		//	clients = append(clients, conn)
-		//	fmt.Printf("Client %d connected: %s\n", len(clients), conn.RemoteAddr())
-		//	go handleClient(conn, &clients)
-		//} else {
-		//	fmt.Println("Server already has two clients connected. Rejecting additional connections.")
-		//	conn.Close()
-		//}
-		//mu.Unlock()
-		//
-		//if len(clients) == 2 {
-		//	fmt.Println("Two clients connected. You can now start chatting!")
-		//}
+
+		go handleClient(conn)
+
 	}
+}
+
+func handleClient(conn net.Conn) {
+	for {
+
+		buffer := make([]byte, 2000000)
+
+		bytesRead, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading from client:", err)
+			return
+		}
+		message := string(buffer[:bytesRead])
+		message = replacement(message)
+		InfoLog.Println(message + "\n")
+
+		fmt.Printf("Received: %s", message)
+
+		mu.Lock()
+
+		clientID = conn.RemoteAddr().String()
+
+		_, writeErr := conn.Write([]byte(clientID + " " + message))
+		if writeErr != nil {
+			log.Fatal("Error writing to client:", clientID, writeErr)
+		}
+
+		fmt.Println(clientID + " " + message)
+		mu.Unlock()
+	}
+}
+func config() {
+	data, err := os.ReadFile("config.yml")
+	if err != nil {
+		log.Fatalf("Error reading YAML file: %v", err)
+	}
+	fmt.Println("Raw YAML content:", string(data))
+	// Unmarshal the YAML data into a Config struct
+	err = yaml.Unmarshal(data, &conf)
+	if err != nil {
+		log.Fatalf("Error unmarshaling YAML: %v", err)
+	}
+	if conf.Port == "" || conf.Host == "" {
+		log.Println("One or more fields are not populated.")
+	}
+
+}
+
+func logData() {
+	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	InfoLog = log.New(logFile, "Info "+time.Now().Format(time.RFC3339Nano)+clientID+"\n", log.Ldate|log.Ltime|log.Lshortfile)
 }
 func replacement(message string) string {
 	message = strings.Replace(message, "#", "From:", -1)
@@ -93,94 +134,4 @@ func replacement(message string) string {
 	// Trim any trailing spaces and print the result
 	finalString := strings.TrimSpace(result.String())
 	return finalString
-}
-
-func handleClient(conn net.Conn, clients *[]net.Conn) {
-	for {
-		//fmt.Fprintf(conn, "how many cards you want to send? ")
-		//	scanner := bufio.NewScanner(conn)
-		buffer := make([]byte, 1024)
-
-		// Read data into the buffer
-		bytesRead, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading from client:", err)
-			return
-		}
-		message := string(buffer[:bytesRead])
-		cleaned := replacement(message)
-		fmt.Printf("Received: %s", message)
-
-		//if !scanner.Scan() {
-		//	fmt.Println(" error reading from client")
-		//	return
-		//}
-		//count, err := strconv.Atoi(scanner.Text())
-		//if err != nil || count < 1 {
-		//	fmt.Fprintf(conn, "invalid number: %v\n", err)
-		//	return
-		//}
-		//var smsList []SmS
-		//for t := 0; t < count; t++ {
-		//	questions := []string{
-		//		"From : ",
-		//		"To : ",
-		//		"Amount : ",
-		//		"Bank :",
-		//	}
-		//	var sms SmS
-		//	for i, question := range questions {
-		//		fmt.Fprintf(conn, question+"\n")
-		//		scanner := bufio.NewScanner(conn)
-		//
-		//		if scanner.Scan() {
-		//			response := scanner.Text()
-		//			switch i {
-		//			case 0:
-		//				sms.From = response
-		//			case 1:
-		//				sms.To = response
-		//			case 2:
-		//				amount, _ := strconv.Atoi(response)
-		//				sms.Amount = amount
-		//			case 3:
-		//				sms.Bank = response
-		//			}
-		//			fmt.Println("Client said :", response)
-		//		}
-		//	}
-		//	sms.OperationTime = time.Now()
-		//	smsList = append(smsList, sms)
-		var clientID string
-		//response := cleaned
-		mu.Lock()
-		//for _, client := range *clients {
-		//	if client == conn {
-		clientID = conn.RemoteAddr().String()
-		//messageWithID = fmt.Sprintf("Client %s says:\n", clientID)
-		//for _, sms := range smsList {
-		//	formattedSms := fmt.Sprintf("{#%s^%s$%d|%s-%s}\n", sms.From, sms.To, sms.Amount, sms.Bank, sms.OperationTime)
-		//	messageWithID += formattedSms
-		//}
-		_, writeErr := conn.Write([]byte(clientID + " " + cleaned))
-		if writeErr != nil {
-			log.Fatal("Error writing to client:", clientID, writeErr)
-		}
-
-		fmt.Println(clientID + " " + cleaned)
-		mu.Unlock()
-	}
-}
-
-func removeClient(conn net.Conn, clients *[]net.Conn) {
-	mu.Lock()
-	defer mu.Unlock()
-	var updatedClients []net.Conn
-	for _, client := range *clients {
-		if client != conn {
-			updatedClients = append(updatedClients, client)
-		}
-	}
-	fmt.Println("Client disconnected:", conn.RemoteAddr())
-	*clients = updatedClients
 }
