@@ -1,15 +1,43 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 	"log"
 	"net"
 	"os"
-	"strings"
-	"sync"
+	pb "server/proto"
 	"time"
 )
+
+type server struct {
+	pb.UnimplementedSappServiceServer
+}
+
+// Handles incoming batch requests
+func (s *server) SmSPacket(ctx context.Context, in *pb.SmSRequest) (*pb.SmSResponse, error) {
+	log.Printf("Received SmSRequest with %d messages", len(in.Messages))
+
+	// Process each incoming message
+	var responseMessages []*pb.SmS
+	for _, message := range in.Messages {
+		log.Printf("Processing message: From=%v, To=%v, Amount=%v, OperationTime=%v",
+			message.From, message.To, message.Amount, message.OperationTime)
+
+		// For this example, we'll add a suffix to the OperationTime to indicate it's been processed
+		responseMessages = append(responseMessages, &pb.SmS{
+			From:          message.From,
+			To:            message.To,
+			Amount:        message.Amount,
+			OperationTime: time.Now().Format(time.RFC3339) + " - processed",
+		})
+	}
+
+	// Return the response containing all processed messages
+	return &pb.SmSResponse{Messages: responseMessages}, nil
+}
 
 type Configs struct {
 	Port     string `yaml:"port"`
@@ -17,73 +45,12 @@ type Configs struct {
 	Protocol string `yaml:"protocol"`
 }
 
-var conf = Configs{}
-var mu sync.Mutex
-var clientID string
-var InfoLog *log.Logger
+var (
+	conf     = Configs{}
+	clientID string
+	InfoLog  *log.Logger
+)
 
-func init() {
-	config()
-	logData()
-}
-func main() {
-
-	fmt.Printf("Server is listening on port %s...\n", conf.Port)
-
-	listen()
-
-}
-
-func listen() {
-	listener, err := net.Listen(conf.Protocol, conf.Host+conf.Port)
-	if err != nil {
-		fmt.Println("Error starting server:", err)
-		return
-	}
-	defer listener.Close()
-
-	for {
-		conn, err := listener.Accept()
-		fmt.Println(conn.RemoteAddr())
-		if err != nil {
-			fmt.Println("Error accepting connection:", err)
-			continue
-		}
-
-		go handleClient(conn)
-
-	}
-}
-
-func handleClient(conn net.Conn) {
-	for {
-
-		buffer := make([]byte, 2000000)
-
-		bytesRead, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading from client:", err)
-			return
-		}
-		message := string(buffer[:bytesRead])
-		message = replacement(message)
-		InfoLog.Println(message + "\n")
-
-		fmt.Printf("Received: %s", message)
-
-		mu.Lock()
-
-		clientID = conn.RemoteAddr().String()
-
-		_, writeErr := conn.Write([]byte(clientID + " " + message))
-		if writeErr != nil {
-			log.Fatal("Error writing to client:", clientID, writeErr)
-		}
-
-		fmt.Println(clientID + " " + message)
-		mu.Unlock()
-	}
-}
 func config() {
 	data, err := os.ReadFile("config.yml")
 	if err != nil {
@@ -98,9 +65,33 @@ func config() {
 	if conf.Port == "" || conf.Host == "" {
 		log.Println("One or more fields are not populated.")
 	}
+}
+func init() {
+	config()
+	logData()
+}
+func main() {
+
+	fmt.Println("gRPC server is running on port ", conf.Port, "\n ")
+
+	listen()
 
 }
 
+func listen() {
+	listener, err := net.Listen(conf.Protocol, conf.Host+conf.Port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	//grpcServer
+	gs := grpc.NewServer()
+	pb.RegisterSappServiceServer(gs, &server{})
+
+	if err := gs.Serve(listener); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+
+}
 func logData() {
 	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -108,30 +99,4 @@ func logData() {
 	}
 
 	InfoLog = log.New(logFile, "Info "+time.Now().Format(time.RFC3339Nano)+clientID+"\n", log.Ldate|log.Ltime|log.Lshortfile)
-}
-func replacement(message string) string {
-	message = strings.Replace(message, "#", "From:", -1)
-	message = strings.Replace(message, "^", " To:", -1)
-	message = strings.Replace(message, "$", " Amount:", -1)
-	message = strings.Replace(message, "/", " Bank:", -1)
-	message = strings.Replace(message, "-", " Time:", -1)
-	//message = strings.Replace(message, "|", "", 1)
-
-	parts := strings.Split(message, "|")
-
-	// Initialize a new string to hold the result
-	var result strings.Builder
-
-	// Track packet count and iterate over each part
-	packetCount := 1
-	for _, part := range parts {
-		if part != "" {
-			result.WriteString(fmt.Sprintf("packet:%d %s ", packetCount, part))
-			packetCount++
-		}
-	}
-
-	// Trim any trailing spaces and print the result
-	finalString := strings.TrimSpace(result.String())
-	return finalString
 }

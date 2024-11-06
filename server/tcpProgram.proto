@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package client;
+
+option go_package = "/proto";
+
+service SappService {
+  rpc SmSPacket(SmSRequest) returns (SmSResponse);
+}
+
+message SmS {
+  uint32 From = 1;
+  uint32 To = 2;
+  uint32 Amount = 3;
+  string OperationTime = 5;
+}
+
+message SmSRequest {
+  repeated SmS Messages = 1;
+}
+
+message SmSResponse {
+  repeated SmS Messages = 1;
+}
